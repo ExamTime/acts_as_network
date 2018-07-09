@@ -1,9 +1,9 @@
-require 'test_helper'
+require './test/test_helper'
 
 class Channel < ActiveRecord::Base
   has_many :shows
-  has_many :premium_shows, :class_name => 'Show', :conditions => ['package = ?', 'premium']
-  has_many :mega_shows, :class_name => 'Show', :conditions => ['package = ?', 'mega']
+  has_many :premium_shows, lambda{ where(package: 'premium') }, :class_name => 'Show'
+  has_many :mega_shows, lambda{ where(package: 'mega') }, :class_name => 'Show'
   acts_as_union :pay_shows, [ :premium_shows, :mega_shows ]
 end
 
@@ -18,19 +18,23 @@ class Person < ActiveRecord::Base
   acts_as_network :contacts, :through => :invites
 
   # network relation through invotes with additional conditions
-  acts_as_network :acquaintances, :through => :invites, :conditions => ["invites.is_accepted = ?", true]
+  acts_as_network :acquaintances, :through => :invites, :conditions => lambda{ where(invites: {is_accepted: true}) }
 
   # simple network relation through a has_and_belongs_to_many table
   acts_as_network :connections
 
   # network relations has_and_belongs_to_many with custom table and foreign_key names
-  acts_as_network :friends, :join_table => :friends, :foreign_key => 'person_id', 
+  acts_as_network :friends,
+                  :join_table => :friends,
+                  :foreign_key => 'person_id',
                   :association_foreign_key => 'person_id_friend'
 
   # network relationship with has_many_through and overrides
-  acts_as_network :colleagues, :through => :invites, 
-                  :foreign_key => 'person_id', :association_foreign_key => 'person_id_target', 
-                  :conditions => ["is_accepted = ?", true]
+  acts_as_network :colleagues,
+                  :through => :invites,
+                  :foreign_key => 'person_id',
+                  :association_foreign_key => 'person_id_target',
+                  :conditions => lambda{ where(invites: {is_accepted: true}) }
 
   # simple usage of acts_as_union to combine friends and colleagues sets
   acts_as_union   :associates, [:friends, :colleagues]
@@ -63,39 +67,13 @@ class UnionCollectionTest < ActiveSupport::TestCase
 
   def test_union_non_collection
     union = ActsAsNetwork::UnionCollection.new(
-      Person.find(:all, :conditions => "id <= 1"),
-      Person.find(:all, :conditions => "id >= 2 AND id <= 4"),
-      Person.find(:all, :conditions => "id >= 5")
+      Person.where("id <= 1"),
+      Person.where("id >= 2 AND id <= 4"),
+      Person.where("id >= 5")
     )
     assert_equal 7, @union.size
   end
 
-  def test_standard_finder
-    set = channels(:usa).shows
-    assert_equal "Monk", set.find_by_name("Monk").name
-    assert_equal("Burn Notice", set.find(
-        :first, :conditions => "channel_id = 1", 
-        :order => "name").name) # dynamic initial finder syntax
-  end
-
-  def test_union_finder_all
-    assert_equal 7, @union.size # check raw size of @union array
-    assert_equal 7, @union.find(:all).size # verify size returned from finder
-  end
-
-  def test_union_find_first
-    assert_equal "Monk", @union.find_by_name("Monk").name # dynamic initial finder syntax
-
-    assert_equal 3, @union.find_all_by_channel_id(0).size # dynamic all finder
-
-    assert_equal("Mad Men", @union.find(
-        :first, :conditions => "id = 6", 
-        :order => "name").name) # dynamic initial finder syntax
-
-    assert_equal("Burn Notice", @union.find(
-        :first, :conditions => "channel_id = 1", 
-        :order => "name").name) # dynamic initial finder syntax
-  end
 
   def test_union_find_by_ids
     assert_equal 7, @union.find(0,1,2,3,4,5,6).size # find by ids accross muliple collections
@@ -108,22 +86,6 @@ class UnionCollectionTest < ActiveSupport::TestCase
       @union.find(2,3,4,900)
       fail "should have failed with ActiveRecord::RecordNotFound error"
     rescue ActiveRecord::RecordNotFound 
-    end
-
-  end
-
-  def test_find_with_scope
-    Show.send(:with_scope, :find => {:conditions => "channel_id = 1"}) do
-      assert_not_nil @union.find(4)
-      assert_not_nil @union.find_by_name("Monk")
-      assert_not_nil @union.find(:first, :conditions => ["name = ?", "Psych"])
-
-      assert_nil @union.find(:first, :conditions => "id = 6", :order => "name")
-      begin # verify that find by id for an out of scope id fails
-        @union.find(2)
-        fail "should have failed with ActiveRecord::RecordNotFound error"
-      rescue ActiveRecord::RecordNotFound 
-      end
     end
   end
 
@@ -139,13 +101,14 @@ class UnionCollectionTest < ActiveSupport::TestCase
   end
 
   def test_mixed_sets
+    dirty_jobs = Show.find_by_name('Dirty Jobs')
     union = ActsAsNetwork::UnionCollection.new(
       channels(:discovery).shows, # one populated set
-      channels(:discovery).shows.find_all_by_name("does not exist"),
+      [],
       nil
     )
 
-    assert_equal "Dirty Jobs", union.find_by_name('Dirty Jobs').name
+    assert_equal 'Dirty Jobs', union.find(dirty_jobs.id).name
     assert_equal channels(:discovery).shows.size, union.size
   end
 
@@ -157,9 +120,9 @@ class UnionCollectionTest < ActiveSupport::TestCase
       channels(:discovery).shows
     )
 
-    assert_equal "Dirty Jobs", union.find_by_name('Dirty Jobs').name
+    dirty_jobs = Show.find_by_name('Dirty Jobs')
+    assert_equal "Dirty Jobs", union.find(dirty_jobs.id).name
     assert_equal channels(:discovery).shows.size, union.size
-    assert_equal channels(:discovery).shows.size, union.find(:all).size
   end
 
   def test_lazy_load
@@ -246,7 +209,7 @@ class ActsAsNetworkTest < ActiveSupport::TestCase
 
     jane.reload and jack.reload and alex.reload
 
-    assert_equal [alex].to_ary, jack.colleagues.find(:all, :conditions => { :name => "Alex" }).to_ary
+    assert_equal alex, jack.colleagues.find(alex.id)
   end
 
   def test_outbound_habtm

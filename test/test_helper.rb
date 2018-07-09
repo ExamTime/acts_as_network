@@ -6,8 +6,9 @@ require 'logger'
 require 'rubygems'
 require 'active_record'
 require 'active_support/test_case'
-require 'active_record/test_case'
+require 'minitest/autorun'
 require 'acts_as_network'
+require 'byebug'
 
 include FileUtils::Verbose
 
@@ -23,7 +24,7 @@ ActiveRecord::Base.establish_connection(:sqlite3)
 
 load(File.join(File.dirname(__FILE__), "schema.rb"))
 
-class ActiveSupport::TestCase < Test::Unit::TestCase #:nodoc:
+class ActiveSupport::TestCase
   include ActiveRecord::TestFixtures
 
   self.fixture_path = File.join(File.dirname(__FILE__), 'fixtures')

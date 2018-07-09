@@ -16,7 +16,8 @@ Gem::Specification.new do |gem|
   gem.version       = ActsAsNetwork::VERSION
 
   gem.add_development_dependency "minitest"
+  gem.add_development_dependency "byebug"
   gem.add_development_dependency "sqlite3-ruby"
-  gem.add_dependency "rails", ">= 3.2.0"
+  gem.add_dependency "rails", ">= 3.2.0", "< 5.0"
 
 end
