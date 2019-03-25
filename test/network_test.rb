@@ -11,8 +11,26 @@ class Show < ActiveRecord::Base
   belongs_to :channel
 end
 
+class Invite < ActiveRecord::Base
+  belongs_to :person
+  belongs_to :person_target, :class_name => 'Person', :foreign_key => 'person_id_target'
+  validates_presence_of :person, :person_target
+end
 
 class Person < ActiveRecord::Base
+
+  # network relationship with has_many_through and overrides
+  acts_as_network :colleagues,
+                  :through => :invites,
+                  :foreign_key => 'person_id',
+                  :association_foreign_key => 'person_id_target',
+                  :conditions => lambda{ where(invites: {is_accepted: true}) }
+
+  # network relations has_and_belongs_to_many with custom table and foreign_key names
+  acts_as_network :friends,
+                  :join_table => :friends,
+                  :foreign_key => 'person_id',
+                  :association_foreign_key => 'person_id_friend'
 
   # network relationship using has_many :through invites
   acts_as_network :contacts, :through => :invites
@@ -23,28 +41,8 @@ class Person < ActiveRecord::Base
   # simple network relation through a has_and_belongs_to_many table
   acts_as_network :connections
 
-  # network relations has_and_belongs_to_many with custom table and foreign_key names
-  acts_as_network :friends,
-                  :join_table => :friends,
-                  :foreign_key => 'person_id',
-                  :association_foreign_key => 'person_id_friend'
-
-  # network relationship with has_many_through and overrides
-  acts_as_network :colleagues,
-                  :through => :invites,
-                  :foreign_key => 'person_id',
-                  :association_foreign_key => 'person_id_target',
-                  :conditions => lambda{ where(invites: {is_accepted: true}) }
-
   # simple usage of acts_as_union to combine friends and colleagues sets
   acts_as_union   :associates, [:friends, :colleagues]
-
-end
-
-class Invite < ActiveRecord::Base
-  belongs_to :person
-  belongs_to :person_target, :class_name => 'Person', :foreign_key => 'person_id_target'
-  validates_presence_of :person, :person_target
 end
 
 class Array

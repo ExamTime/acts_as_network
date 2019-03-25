@@ -166,19 +166,23 @@ module ActsAsNetwork
          configuration.update(options) if options.is_a?(Hash)
 
          if configuration[:through].nil?
-           has_and_belongs_to_many "#{relationship}_out".to_sym,
-             configuration.fetch(:conditions, lambda{ where("1=1") }),
-             :class_name => name,
-             :foreign_key => configuration[:foreign_key],
-             :association_foreign_key => configuration[:association_foreign_key],
-             :join_table => configuration[:join_table]
+           unless self.instance_methods.include?("#{relationship}_out".to_sym)
+             has_and_belongs_to_many "#{relationship}_out".to_sym,
+               configuration.fetch(:conditions, lambda{ where("1=1") }),
+               :class_name => name,
+               :foreign_key => configuration[:foreign_key],
+               :association_foreign_key => configuration[:association_foreign_key],
+               :join_table => configuration[:join_table]
+           end
 
-           has_and_belongs_to_many "#{relationship}_in".to_sym,
-             configuration.fetch(:conditions, lambda{ where("1=1") }),
-             :class_name => name,
-             :foreign_key => configuration[:association_foreign_key],
-             :association_foreign_key => configuration[:foreign_key],
-             :join_table => configuration[:join_table]
+           unless self.instance_methods.include?("#{relationship}_in".to_sym)
+             has_and_belongs_to_many "#{relationship}_in".to_sym,
+               configuration.fetch(:conditions, lambda{ where("1=1") }),
+               :class_name => name,
+               :foreign_key => configuration[:association_foreign_key],
+               :association_foreign_key => configuration[:foreign_key],
+               :join_table => configuration[:join_table]
+           end
 
          else
 
@@ -186,24 +190,34 @@ module ActsAsNetwork
            through_sym = configuration[:through]
 
            # a node has many outbound relationships
-           has_many "#{through_sym}_out".to_sym,
-             :class_name => through_class,
-             :foreign_key => configuration[:foreign_key]
-           has_many "#{relationship}_out".to_sym,
-             configuration.fetch(:conditions, lambda{ where("1=1") }),
-             :through => "#{through_sym}_out".to_sym,
-             :source => "#{name.tableize.singularize}_target",
-             :foreign_key => configuration[:foreign_key]
+           unless self.instance_methods.include?("#{through_sym}_out".to_sym)
+             has_many "#{through_sym}_out".to_sym,
+               :class_name => through_class,
+               :foreign_key => configuration[:foreign_key]
+           end
+
+           unless self.instance_methods.include?("#{relationship}_out".to_sym)
+             has_many "#{relationship}_out".to_sym,
+               configuration.fetch(:conditions, lambda{ where("1=1") }),
+               :through => "#{through_sym}_out".to_sym,
+               :source => "#{name.tableize.singularize}_target",
+               :foreign_key => configuration[:foreign_key]
+           end
 
            # a node has many inbound relationships
-           has_many "#{through_sym}_in".to_sym,
-             :class_name => through_class, 
-             :foreign_key => configuration[:association_foreign_key]
-           has_many "#{relationship}_in".to_sym,
-             configuration.fetch(:conditions, lambda{ where("1=1") }),
-             :through => "#{through_sym}_in".to_sym, 
-             :source => name.tableize.singularize,
-             :foreign_key => configuration[:association_foreign_key]
+           unless self.instance_methods.include?("#{through_sym}_in".to_sym)
+             has_many "#{through_sym}_in".to_sym,
+               :class_name => through_class, 
+               :foreign_key => configuration[:association_foreign_key]
+           end
+
+           unless self.instance_methods.include?("#{relationship}_in".to_sym)
+             has_many "#{relationship}_in".to_sym,
+               configuration.fetch(:conditions, lambda{ where("1=1") }),
+               :through => "#{through_sym}_in".to_sym, 
+               :source => name.tableize.singularize,
+               :foreign_key => configuration[:association_foreign_key]
+           end
 
            # when using a join model, define a method providing a unioned view of all the join
            # records. i.e. if People acts_as_network :contacts :through => :invites, this method

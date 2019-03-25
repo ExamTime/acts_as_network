@@ -19,8 +19,7 @@ rm_f config['sqlite3'][:database]
 rm_f File.join(File.dirname(__FILE__), 'debug.log')
 
 ActiveRecord::Base.logger = Logger.new(File.join(File.dirname(__FILE__), "debug.log"))
-ActiveRecord::Base.configurations = config
-ActiveRecord::Base.establish_connection(:sqlite3)
+ActiveRecord::Base.establish_connection(config["sqlite3"])
 
 load(File.join(File.dirname(__FILE__), "schema.rb"))
 
@@ -31,7 +30,7 @@ class ActiveSupport::TestCase
   self.pre_loaded_fixtures = true
 
   # Turn off transactional fixtures if you're working with MyISAM tables in MySQL
-  self.use_transactional_fixtures = true
+  self.use_transactional_tests = true
 
   # Instantiated fixtures are slow, but give you @david where you otherwise would need people(:david)
   self.use_instantiated_fixtures  = false
