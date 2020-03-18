@@ -1,1 +1,1 @@
-rvm --create use 2.4.5@acts_as_network
+rvm --create use 2.5.7@acts_as_network
